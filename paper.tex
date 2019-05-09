@@ -2,6 +2,7 @@
 
 \usepackage[english]{babel}
 \usepackage{blindtext}
+\usepackage{algorithmic}
 
 % Copyright
 \renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference info
@@ -30,15 +31,16 @@
 %% {} with no args suppresses printing of the price
 \acmPrice{}
 
-
+\hypersetup{draft}
 \begin{document}
-\title{A \LaTeX\ Template for SIGCOMM 18}
+\title{Emergency Broadcast Architecture}
 
 %\titlenote{Produces the permission block, and copyright information}
 %\subtitle{Extended Abstract}
 
-\author{Paper \# XXX, XXX pages}
-% \author{Firstname Lastname}
+%\author{Paper \# XXX, XXX pages}
+\author{Michael Dong}
+\author{Ian Rodney}
 % \authornote{Note}
 % \orcid{1234-5678-9012}
 % \affiliation{%
@@ -51,16 +53,18 @@
 % \email{email@domain.com}
 
 % The default list of authors is too long for headers}
-\renewcommand{\shortauthors}{X.et al.}
+\renewcommand{\shortauthors}{M. Dong, I. Rodney}
 
 \begin{abstract}
-    \blindtext
+    Public alert systems are neither new, novel, nor ready for the future. They are unprepared for the changing domain of media consumption and the growing threat of network-based attacks. Here we present a simple design for an architecture to reliably and securely distribute emergency alerts through the Internet. Rather than treating the network as a black box, we incorporate it into our design, enabling us to make stronger guarantees. We build off of a clean-slate framework that supports multiple, specialized architectures. 
 \end{abstract}
 
 \maketitle
 
 \input{body}
 
+
+\newpage
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{reference}
 

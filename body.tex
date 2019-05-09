@@ -1,30 +1,168 @@
-\section{Introduction}
-\Blindtext
+\section{Motivation}
+
+More and more people consume media from client-server based sources (Facebook, Netflix, Spotify, etc.) instead of traditional one-to-many sources that usually carry emergency alerts. The existing solution to this is to provide an emergency alert feed that websites and providers can periodically poll and then push to users. While television and radio broadcasters (and providers) are legally required to disseminate these messages, websites and ISPs\footnote{Companies that provide both (like AT\&T), only are required to send via the mandated medium} are not\cite{cfr47}.
+
+More importantly, the existing systems treat the internet as a reliable black box, ignoring the increasing frequency and strength of cyber-attacks. In 'traditional' emergency scenarios the internet is either present or not: physical cables are down or up. But in a denial of service attack, the physical infrastructure is intact, but the ability for useful communication is heavily degraded. In a scenario where either terrorist or state actors decide to attack in both the physical \textit{and} cyber realms, citizens need to still be able to receive alerts.
+
+\section{Background}
+\subsection{Trotsky}
+The foundation for this project is Trotsky, a clean-slate internet framework that separates intra (L3) and inter (L3.5) domain abstractions, and allows for a proliferation of specialized network architectures. The forwarding appliance in Trotsky is the Trotsky Processor (TP): an end-point for an L3.5 pipe that forwards based on the L3.5 protocol agent of the incoming packet. New inter-domain architectures can be deployed by adding a routing agent to TPs, and new intra-domain architectures can be developed within a domain without changing the L3.5 architecture.
+
+We leverage Trotsky both as a way of deployment and as a rationale for our design. Deployment in Trotsky is as simple as pushing a software update to TPs. We also use the L3.5 abstraction of domain-to-domain communication to simplify the problem from sending a message to every end-host to sending a message to every ISP. We aim to solve one specific problem: \textit{emergency} broadcast---with Trotsky this is allowed, and even encouraged. There is no reason to add complexity to existing architectures or create a new do-all architecture because Trotsky allows for a multitude. 
+
+\subsection{Existing Infrastructure}\label{infrabckgrnd}
+The US public alert system has been around for over half a century\footnote{This paper focuses on the US, but most countries (if they have such systems) have similar designs.}. At its core, FEMA sends a message to distributors (TV stations, cellular providers, etc.), which in turn deliver the alert to actual citizens. This first step of communication happens either over direct radio transmission or over the internet. In a 2018 test of the system, a majority of radio \& television providers (in addition to all cellular providers) used the online information feed. Primary Entry Points (PEPs) are hardened sites that directly link with FEMA over robust RF communication to help ensure that alerts are propagated across the country. These PEPs can also be used on a local scale, providing a logical central propagation point to reach other broadcasters. \cite{ipaws101}. 
+
+A 2018 system test showed some interesting results about the effectiveness of the system. Overall only about 80\% of people received the alert, showing that their is room for improvement. Furthermore, most people that were surveyed received the alert on their smartphone, rather than radio or television (combined less than 10\% of respondents ). There were also a range of reported issues (from ensuing service outages to receiving dozens of duplicated alerts) from the cellular transmission\cite{weatest,everbridge}
+\section{Design Overview}
+Our design combines the abstractions provided by Trotsky with the hierarchical broadcast design provided by the current emergency broadcast infrastructure. Concretely, this means flooding an alert on L3.5, and then having ISPs push the message to citizens. 
 
 \begin{figure}[tp]
 \centering
-\includegraphics{figures/mouse}
-\caption{\blindtext}
+\includegraphics[width=8.5cm]{figures/full_diagram_v2.png}
+\caption{Step-by-step process of a nation-wide broadcast}
+\label{fig:brdcast}
 \end{figure}
 
-\section{Related Work}
-\blindtext
 
-And we need some citation here\cite{floyd1993random, stoica2001chord}
+\subsection{Detailed Process}
+The steps for a national alert are shown in Figure \ref{fig:brdcast}, and are described in detail below.
 
-\Blindtext
+\textbf{1.} Some entity sends an out-of-band message to the PEPs\footnote{These are the same PEPs mentioned in section \ref{infrabckgrnd}} across the country. This step helps ensure that the message is inserted into multiple points of the internet, reducing the impact of network partition. 
 
-\section{System Design}
+\textbf{2. \& 3.} PEPs confer with each other (out-of-band) to reduce the risk of a compromised PEP (described in section \ref{acl}). 
 
-\subsection{The First Layer}
-\Blindtext
+\textbf{4.} PEPs then send the message into the internet; it will be intercepted by the first TP in their ISP. The TP ensures that the message has the correct signature (described in section \ref{acl}), dropping it if it does not.
 
-\subsection{The Second Layer}
-\Blindtext
+\textbf{5.} The TP initiates L3.5 flooding, encoding the data using a fountain code (described in section \ref{reliable}). Every TP that receives the message will \textit{also check} the signature before forwarding. 
+
+\textbf{6.} Each TP floods until its neighbor responds with 'Message Received.' 
+
+\textbf{7.} When each TP can decode the message, it will begin internal, intra-domain broadcast to its customers.
+
+\\
+A local emergency broadcast follows a similar procedure, but differs in two main ways. First, it may not require cross validation with other PEPs. This is because a locality may only have one PEP, and would go directly to that to broadcast. Second, when the message is flooded on L3.5, TPs in different localities would not continue the broadcast\footnote{If a TP knew its neighbors were in the same location as the broadcast, it would forward the packets.}. 
+
+Once messages get to an ISP, the ISP is responsible for the 'last-mile' delivery to people. This delivery service can differ domain to domain. For a wireless provider, they may use the same SMS-based emergency alert system that is in use today. ISPs can use multicast, existing modem communication systems, or whatever technologies they may have. Finally, the host-based delivery is as simple as having browsers or OS vendors accepting special, verified 'alert' packets. 
+
+The fields in the packet are shown in Figure \ref{fig:pckt}. The L3.5 header specifies that the TP should pass the packet to the Emergency Broadcast processing agent. The\textit{ Broadcast ID} is a  flow number to differentiate between messages. The \textit{Total Number Sent} specifies how many packets the TP should receive before sending 'Message Received.' This will be larger than the number of needed for decoding the message and will be described in section \ref{reliable}. \textit{Location} specifies what region the message is for, enabling local broadcast. The \textit{Time Stamp} and \textit{Crypto Signature} are used in verification and in preventing replay-based attacks (messages with a valid signature but a sufficiently stale time stamp will be dropped).
+\begin{figure}[tp]
+\centering
+\includegraphics[width=8.5cm]{figures/packet_header.png}
+\caption{Packet layout}
+\label{fig:pckt}
+\end{figure}
+
+\subsection{Rationale}
+The goal for this architecture is \textbf{1)} robust message delivery and \textbf{2)} access control. This prioritization led to the design we have here. We further worked with several key assumptions:  \textbf{A)} emergency broadcasts are relatively infrequent, \textbf{B)} Trotsky is the standard framework, and \textbf{C)} some central authority must be trusted\footnote{This is meant in both having some sort of centralized key storage and also in the sense of having someone with absolute ability to launch an alert (the president)}. 
+
+Goal \textbf{1} and assumptions \textbf{B} allowed us to consider in-networks solutions. End-to-end guarantees over many lossy links are weak because the per-link drop probabilities are compounded. Trotsky allows us to place functionality in the network, reducing the number of links between logical endpoints, increasing robustness. In network support also allows for extensions like increasing QoS levels for these alerts\footnote{To reiterate: this is an extension.}. 
+
+Goal \textbf{1} and assumption \textbf{A} led us to the idea of flooding. This architecture is used for infrequent and \textit{urgent} events, meaning that degradation of other traffic is tolerable. Using BGP paths increases the probability of message failure if links go down or are unstable, and also introduces unnecessary complexity. The use of many PEPs to introduce the message to the system also reduces the single-point-of-failure of having a truly centralized network entry point.
+
+In the following section, we will focus on goal \textbf{2} and assumption \textbf{C}. 
+
+
+\section{Access Control}\label{acl}
+\subsection{Overview}
+
+\subsection{Threat Model}
+\subsection{Extensions}
+\section{Reliable Transmission}\label{reliable}
+In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes. The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery\cite{raptorq, raptorqpresent}.
+
+RaptorQ encoding also provides high performance through linear time encoding and decoding, reducing the burden on TPs\footnote{Specifically that the encoding/decoding scheme does not rely on specialized hardware}. Codornices, a RaptorQ package from ICSI, recently released performance results. For a 128 kB message on x86, the encode and decode took under $0.5$ ms each, and was able to produce/consume at a rate of $2$ Gbps\cite{raptorqperf}. This performance is definitely sufficient for our application, as will be described in the following section.
+\subsection{Use in our system}
+-   Send  $2\cdot k_{overshoot}$
+
+-   Encode once (at transmission)
+
+-   Downside of no-blocking
+
 
 \section{Evaluation}
-\Blindtext
+For our evaluation we used python networkx to model the high level behavior of different propagation modes\cite{nwx}. 
+For network topologies, we used an abridged Rocketfuel ISP level map \cite{rocketfuel}.
+
+\begin{figure}[tp]
+\centering
+\includegraphics[width=6cm]{figures/simulate_algo.png}
+\caption{Basic simulation algorithm used}
+\label{algo:a1}
+\end{figure}
+
+\subsection{Setup}
+The test framework is described in Figure \ref{algo:a1}. Special care is taken to ensure that if a node gets a chunk on one iteration, it cannot transmit until the next iteration. The simulation continues until every node has received all packets in the message. We ran tests 100 times on varying link-based drop probabilities. In each experiment one sender node was selected and a 15 packet long message was used. 
+
+To model the RaptorQ encoding technique, each node iterates through all received packets and sends one (not knowing what the reciever has). The first node is given more chunks than the message needs to simulate the infinite generation of blocks. In the case of the blocking version, each node waits until it had received enough chunks (the number of chunks in the message) to decode a message before sending. For the ACK-based sending technique, each node keeps track of the largest 'sequence number' that each neighbor has received. It repeatedly sends one chunk until the neighbor tells it to move to the next block.
+
+We were only concerned with relative performance of methods, not absolute performance. Drops were used to model congestion because routing devices under attack would begin dropping packets once buffers filled up. Latency was ignored because the only component of latency that would change between methods is the number of packets sent (propagation, queuing delays would be the same). 
+
+\subsection{Results}
+
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/big_font/ack_trim.png}
+\caption{Box-and-Whisker plot of the ACKing sender }
+\label{graph:ack}
+\end{figure}
+
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/big_font/rateless_trim.png}
+\caption{Box-and-Whisker plot of the Rateless sender}
+\label{graph:rateless}
+\end{figure}
+
+
+Our results are summarized in Figures \ref{graph:ack}, \ref{graph:rateless},\ref{graph:ackvsrateless}, \ref{graph:blockingvsnot}, and \ref{graph:ackvsratelessLOG} \footnote{Note that the drop probability of $0.99$ was excluded from Figure \ref{graph:ack} and Figure \ref{graph:rateless} in order to increase readability.}. The first two show the variance of performance of the ACK-based sender and the rateless sender as probability of packet loss increases. The latter three directly compare the performance of the rateless (non-blocking) sender with the performance of the ACK-based sender and rateless, blocking sender. 
+
+The rateless outperforms the ACKing one in almost all scenarios. In Figure \ref{graph:ackvsrateless}, the huge increase in loss for ACK-Based is quite apparent. It performs substantially worse when conditions become severely degraded. Figure \ref{graph:ackvsratelessLOG} shows that even for more mild conditions, the rateless sender is almost 10x better.
+
+We were initially unsure about whether we should immediately send packets to neighbors or wait for an entire message to begin sending. Figure \ref{graph:blockingvsnot} shows that the version that immediately sends always outperforms the blocking version. The improvement is always present, but becomes especially present when probability of loss increases. It should be noted that the both rateless senders are far better than the ACKing sender.
+
+Overall the results are not terribly surprising. The rateless sender benefits from being able to send for the longest amount of time (even if it is only repeatedly sending one block). The ACK-based sender takes a double hit from lossy links, and thus has a severe performance degradation. The blocking, rateless sender suffers from having to wait longer to begin transmitting; this surprisingly is not that much for all but the most extreme drop rates.
+
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/big_font/ack_comp.png}
+\caption{Comparison of the ACKing and Rateless senders}
+\label{graph:ackvsrateless}
+\end{figure}
+
+
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/big_font/block_comp.png}
+\caption{Comparison of the blocking and non-blocking Rateless senders}
+\label{graph:blockingvsnot}
+\end{figure}
+
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/big_font/triple_comp.png}
+\caption{Comparison of the ACKing and two Rateless senders on a log y-axis}
+\label{graph:ackvsratelessLOG}
+\end{figure}
 
 \section{Conclusion}
-\blindtext
+\textbf{LETS WRITE A REAL CONCLUSION}
 
+
+One actionable avenue that we did not explore was a way of merging our ideas presented here with the existing internet infrastructure. This path, while most likely less clean and more complex could provide a path to  increasing the robustness of the national broadcast system.
+
+
+\textbf{Acknowledgements:} We thank Murphy McCauley for helping us get started with this idea. We also are grateful for Nick Weaver, who helped us solidify our security model.
+
+
+% \begin{figure}[tp]
+% \centering
+% \includegraphics{figures/mouse}
+% \caption{\blindtext}
+% \end{figure}
+% And we need some citation here\cite{floyd1993random, stoica2001chord}
