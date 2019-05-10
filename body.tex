@@ -63,10 +63,14 @@ Goal \textbf{1} and assumption \textbf{A} led us to the idea of flooding. This a
 
 In the following section, we will focus on goal \textbf{2} and assumption \textbf{C}. 
 \section{Access Control}\label{acl}
-The goal of access control is crucial to users receiving only critical information in time of emergencies. We limit the ability to broadcast messages on the network to a small group of trusted parties such as local and federal governments. Our network architecture 
+The goal of access control is crucial to users receiving only critical information in time of emergencies. We limit the ability to broadcast messages on the network to a small group of trusted parties such as local and federal governments. Our network architecture is responsible for preventing malicious users from disseminating misinformation or spamming the network or users with their messages.
 \subsection{Overview}
-To ensure that only authorized users can broadcast emergency messages on the network, we include a crytopgraphic signature in the header of our L3.5 packet header. 
+To ensure that only authorized users can broadcast emergency messages on the network, we need to be able to verify the identity of the sender. We use a public key infrastructure, such as X.509 certificates\cite{x509}, to authenticate the identity of the sender. The federal government will act as the root certificate authority, which signs a root certificate to be stored in the trust store of every TP's Emergency Broadcast agent. The federal government is responsible for signing certificates for local governments to act as intermediate certificate authorities. Both the root certificate authority and intermediate certificate authorities are able to sign end entity certificates for members of their organization to use to send messages through the network.
+\subsection{Detailed Signing/Verifying Process}
 \subsection{Threat Model}
+In our architecture, we trust that the governments, both local and federal, network operators, and hardware vendors are not malicious. The threat we protect against are other users of the internet. Since anyone is able to send a packet that uses the Emergency Broadcast L3.5 header, we must prevent malicious users of the internet from trying to broadcast their own message to all other users of the internet.
+We trust hardware vendors, network operators, govs.
+We don't trust other users of the internet.
 \subsection{Extensions}
 
 
@@ -99,7 +103,7 @@ We modeled ACK-based senders, rateless senders (decode-only), and blocking ratel
 For rateless senders, each node sequentially goes through received packets and blindly sends them (there is no knowledge if the receiver has received it). The first node is given $len(MSG)\cdot f_{overshoot}$ packets to begin sending. The simulation ends when all nodes have received any set of $len(MSG)$ distinct packets. The blocking rateless sender cannot transmit until it has received $len(MSG)$ packets, but, unlike the rateless one, it sends an infinite stream of packets.
 
 \subsection{Experimental Setup}
-For each experiment we defined a link-based drop probability value, selected a given propagation method and ran the simulation. For each set of control variables we repeated the simulation 100 times to get a stronger sample size. For all experiments, we selected one sender node (at random from the graph) and sent a 15-packet-long message.
+For each experiment we defined a link-based drop probability value, selected a given propagation method and ran the simulation. For each set of control variables we repeated the simulation 100 times to get a stronger sample size. For all experiments, we selected one sender node (at random from the graph) and sent a 15-packet-long message. Unless otherwise specified, the rateless sender uses a $f_{overshoot}$ of $2$.
 
 We were only concerned with relative performance of methods, not absolute performance. Drops were used to model congestion because routing devices under attack would begin dropping packets once buffers filled up. We measure performance in terms of "Numbers of Iterations," or the amount of time the simulation ran for. Converting from this to actual propagation time would look something along the lines of $Num\_of\_Iterations\cdot \frac{\overline{Transmission\_Latency}}{\overline{Link\_Bandwidth}}$\footnote{We do not intend to treat these as any form of real world estimations, and this equation is just a hypothetical in the right direction}.
 
@@ -128,11 +132,13 @@ The first two graphs show the performance of the ACK-based sender and rateless s
 
 Figure \ref{graph:ackvsrateless} compares the average performance of the ACK-based sender and the rateless sender as drop probability increases. The main takeaway from this graph is that the performance of ACK-based sending rapidly degrades when the drop probability approaches $100\%$. To better understand the difference between these two senders at lower drop probabilities, look at Figure \ref{graph:ackvsratelessLOG}, which uses a logarithmic $y$-axis. Even for mild conditions, the rateless sender is almost \textbf{10x} faster. 
 
-The remaining graphs focus on comparisons of rateless senders. Figure \ref{graph:blockingvsnot} shows a direct comparison of the blocking rateless and 'normal' rateless senders. The 
+The remaining graphs focus on comparisons of rateless senders. Figure \ref{graph:blockingvsnot} shows a direct comparison of the blocking rateless and 'normal' rateless senders. Both senders have relatively similar performance throughout all drop probabilities. The difference at the max end is more pronounced but is only ~1.5x bigger. Figure \ref{graph:ackvsratelessLOG} reveals that the two sending methods are at a roughly constant separation of roughly 2x.
 
-We were initially unsure about whether we should immediately send packets to neighbors or wait for an entire message to begin sending. Figure \ref{graph:blockingvsnot} shows that the version that immediately sends always outperforms the blocking version. The improvement is always present, but becomes especially present when probability of loss increases. It should be noted that the both rateless senders are far better than the ACKing sender.
+Figure \ref{graph:varyParams} compares the baseline rateless sending (which uses $f_{overshoot}$ $=$ $2$) , with $f_{overshoot} = 4$ and $f_{overshoot} = 8$. This figure is the \% difference of in Number of Iterations of the higher factors as compared with the baseline. For comparison to the block based sender, all values represented here are less than 1.1x different. This shows that the while the increase in overshoot can improve performance, it does not do so drastically.
 
-Overall the results are not surprising. The rateless sender benefits from being able to send for the longest amount of time (even if it is only repeatedly sending one block). The ACK-based sender takes a double hit from lossy links, and thus has a severe performance degradation. The blocking, rateless sender suffers from having to wait longer to begin transmitting; this surprisingly is not that much for all but the most extreme drop rates.
+The clearest result is not surprising: rateless codes outperform ACK-based sending. This makes sense because an ACK-based sender needs to traverse each link \textit{twice} for any given packet. 
+
+The results for rateless senders are more surprising. The blocking, rateless sender performed relatively well, staying within a roughly constant factor of the non-blocking version. The impact of waiting to send (especially for high drop rates) seems to be countered by the infinite stream. With regards to the standard rateless sender, the choice of $f_{overshoot}$ does not seem to matter much beyond a factor of $2$. The increase to $4$ and $8$ resulted in materially similar results.
 
 \begin{figure}[tp]
 \centering
@@ -161,24 +167,13 @@ Overall the results are not surprising. The rateless sender benefits from being 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/FACTOR_VARY_BETTER.png}
-\caption{Comparison of a Rateless senders with various overshoot comparison. The blocking Rateless sender is included for reference}
+\includegraphics[width=8cm]{figures/FACTOR_VARY_FOCUS.png}
+\caption{Comparison of a Rateless senders with various overshoot factors}
 \label{graph:varyParams}
 \end{figure}
 
 \section{Conclusion}
-\textbf{LETS WRITE A REAL CONCLUSION}
-
-
-One actionable avenue that is not explored in this paper is a way of merging our ideas presented here with the existing internet infrastructure. This path, while most likely less clean and more complex could provide a path to  increasing the robustness of the national broadcast system.
-
+In this paper we presented a new Emergency Broadcast Architecture that interleaves existing infrastructure with a flexible internet framework to produce a simple, robust design. We achieved our goals of reliability and access control through RaptorQ codes and a variant of public key cryptography. Overall, our design meets the needs of a future-proof emergency alert system. With our assumption of working in a "Trotksy World," we leave open paths for future research into merging our designs in the existing emergency alert and internet infrastructure. This path, while most likely less clean and more complex could provide a path to increasing the robustness of the national broadcast system.
 
 \textbf{Acknowledgements:} We thank Murphy McCauley for helping us get started with this idea. We also are grateful for Nick Weaver, who helped us solidify our security model.
 
-
-% \begin{figure}[tp]
-% \centering
-% \includegraphics{figures/mouse}
-% \caption{\blindtext}
-% \end{figure}
-% And we need some citation here\cite{floyd1993random, stoica2001chord}
