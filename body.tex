@@ -63,10 +63,13 @@ Goal \textbf{1} and assumption \textbf{A} led us to the idea of flooding. This a
 
 In the following section, we will focus on goal \textbf{2} and assumption \textbf{C}. 
 \section{Access Control}\label{acl}
+The goal of access control is crucial to users receiving only critical information in time of emergencies. We limit the ability to broadcast messages on the network to a small group of trusted parties such as local and federal governments. Our network architecture 
 \subsection{Overview}
-
+To ensure that only authorized users can broadcast emergency messages on the network, we include a crytopgraphic signature in the header of our L3.5 packet header. 
 \subsection{Threat Model}
 \subsection{Extensions}
+
+
 \section{Reliable Transmission}\label{reliable}
 In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes (we will use RaptorQ and rateless codes interchangeably throughout this paper). The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery.\cite{raptorq, raptorqpresent}
 
@@ -89,15 +92,16 @@ For network topologies, we used an abridged Rocketfuel ISP level map. \cite{rock
 \end{figure}
 
 \subsection{Simulation Design}
-The simulator provides as step-based simulation of propagation of packets until all nodes have received the full message. The pseudocode is provided in Figure \ref{algo:a1}. 
-Special care is taken to ensure that if a node gets a chunk on one iteration, it cannot transmit until the next iteration. The simulation continues until every node has received all packets in the message.  
+The simulator provides as step-based simulation of propagation of packets until all nodes have received the full message. The pseudocode is provided in Figure \ref{algo:a1}. The simulator makes sure that this abstraction of lock-step propagation is maintained (e.g., When on iteration $i$, and node $u$ sends $p_{a+1}$ to $v$, when $v$ gets its turn to send on iteration $i$, \textbf{cannot} send $p_{a+1}$). The simulation stops when all nodes have received the message (this varies based on model being tested). 
 
-To model the RaptorQ encoding technique, each node iterates through all received packets and sends one (not knowing what the reciever has). The first node is given more chunks than the message needs to simulate the infinite generation of blocks. In the case of the blocking version, each node waits until it had received enough chunks (the number of chunks in the message) to decode a message before sending. For the ACK-based sending technique, each node keeps track of the largest `sequence number' that each neighbor has received. It repeatedly sends one chunk until the neighbor tells it to move to the next block.
+We modeled ACK-based senders, rateless senders (decode-only), and blocking rateless senders (encode and decode at each step). To simulate ACK-based sending, each node keeps track of the largest `sequence number` that each neighbors has received. Nodes repeatedly send one packet until the neighbor explicitly tells it to move on. 
+
+For rateless senders, each node sequentially goes through received packets and blindly sends them (there is no knowledge if the receiver has received it). The first node is given $len(MSG)\cdot f_{overshoot}$ packets to begin sending. The simulation ends when all nodes have received any set of $len(MSG)$ distinct packets. The blocking rateless sender cannot transmit until it has received $len(MSG)$ packets, but, unlike the rateless one, it sends an infinite stream of packets.
 
 \subsection{Experimental Setup}
 For each experiment we defined a link-based drop probability value, selected a given propagation method and ran the simulation. For each set of control variables we repeated the simulation 100 times to get a stronger sample size. For all experiments, we selected one sender node (at random from the graph) and sent a 15-packet-long message.
 
-We were only concerned with relative performance of methods, not absolute performance. Drops were used to model congestion because routing devices under attack would begin dropping packets once buffers filled up. Latency was ignored because the only component of latency that would change between methods is the number of packets sent (propagation, queuing delays would be the same).
+We were only concerned with relative performance of methods, not absolute performance. Drops were used to model congestion because routing devices under attack would begin dropping packets once buffers filled up. We measure performance in terms of "Numbers of Iterations," or the amount of time the simulation ran for. Converting from this to actual propagation time would look something along the lines of $Num\_of\_Iterations\cdot \frac{\overline{Transmission\_Latency}}{\overline{Link\_Bandwidth}}$\footnote{We do not intend to treat these as any form of real world estimations, and this equation is just a hypothetical in the right direction}.
 
 \subsection{Results}
 
@@ -113,18 +117,18 @@ We were only concerned with relative performance of methods, not absolute perfor
 \centering
 \noindent
 \includegraphics[width=8cm]{figures/rateless_FINAL.png}
-\caption{Box-and-Whisker plot of the Rateless sender}
+\caption{Box-and-Whisker plot of the rateless sender}
 \label{graph:rateless}
 \end{figure}
 
 
-Our results are summarized in Figures \ref{graph:ack}, \ref{graph:rateless},\ref{graph:ackvsrateless}, \ref{graph:blockingvsnot}, and \ref{graph:ackvsratelessLOG} \footnote{Note that the drop probability of $0.99$ was excluded from Figure \ref{graph:ack} and Figure \ref{graph:rateless} in order to increase readability.}.
+Our results are summarized in Figures \ref{graph:ack}, \ref{graph:rateless},\ref{graph:ackvsrateless}, \ref{graph:ackvsratelessLOG}, \ref{graph:blockingvsnot}, and \ref{graph:varyParams} \footnote{Note that the drop probability of $0.99$ was excluded from Figure \ref{graph:ack} and Figure \ref{graph:rateless} in order to increase readability.}.
 
-The first two show the performance of the ACK-based sender and rateless sender relative to themselves as the probability of packet-loss increases. From these graphs, we can see how the message propagation time would vary based on the severity of packet loss. These graphs provide a stand-alone baseline for each sending method.  
+The first two graphs show the performance of the ACK-based sender and rateless sender relative to themselves as the probability of packet-loss increases. From these graphs, we can see how the message propagation time would vary based on the severity of packet loss. These graphs provide a stand-alone baseline for each major sending method. It should be noted that y-axis on these graphs are \textbf{10x} greater in Figure \ref{graph:ack} as compared to Figure \ref{graph:rateless}.
 
-The first two show the variance of performance of the ACK-based sender and the rateless sender as probability of packet loss increases. The latter three directly compare the performance of the rateless (non-blocking) sender with the performance of the ACK-based sender and rateless, blocking sender. 
+Figure \ref{graph:ackvsrateless} compares the average performance of the ACK-based sender and the rateless sender as drop probability increases. The main takeaway from this graph is that the performance of ACK-based sending rapidly degrades when the drop probability approaches $100\%$. To better understand the difference between these two senders at lower drop probabilities, look at Figure \ref{graph:ackvsratelessLOG}, which uses a logarithmic $y$-axis. Even for mild conditions, the rateless sender is almost \textbf{10x} faster. 
 
-The rateless outperforms the ACKing one in almost all scenarios. In Figure \ref{graph:ackvsrateless}, the huge increase in loss for ACK-Based is quite apparent. It performs substantially worse when conditions become severely degraded. Figure \ref{graph:ackvsratelessLOG} shows that even for more mild conditions, the rateless sender is almost 10x better.
+The remaining graphs focus on comparisons of rateless senders. Figure \ref{graph:blockingvsnot} shows a direct comparison of the blocking rateless and 'normal' rateless senders. The 
 
 We were initially unsure about whether we should immediately send packets to neighbors or wait for an entire message to begin sending. Figure \ref{graph:blockingvsnot} shows that the version that immediately sends always outperforms the blocking version. The improvement is always present, but becomes especially present when probability of loss increases. It should be noted that the both rateless senders are far better than the ACKing sender.
 
@@ -134,7 +138,7 @@ Overall the results are not surprising. The rateless sender benefits from being 
 \centering
 \noindent
 \includegraphics[width=8cm]{figures/ACK_RATELESS_FINAL.png}
-\caption{Comparison of the ACKing and Rateless senders}
+\caption{Comparison of the ACKing and rateless senders}
 \label{graph:ackvsrateless}
 \end{figure}
 
@@ -142,28 +146,25 @@ Overall the results are not surprising. The rateless sender benefits from being 
 \centering
 \noindent
 \includegraphics[width=8cm]{figures/TRIPLE_FINAL.png}
-\caption{Comparison of the ACKing and two Rateless senders on a log y-axis}
+\caption{Comparison of the ACKing and two rateless senders on a log y-axis}
 \label{graph:ackvsratelessLOG}
 \end{figure}
 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/BLOCKING_RATELESS.png}
-\caption{Comparison of the blocking and non-blocking Rateless senders}
+\includegraphics[width=8cm]{figures/big_font/BLOCKING_RATELESS_BETTER.png}
+\caption{Comparison of the blocking and non-blocking rateless senders}
 \label{graph:blockingvsnot}
 \end{figure}
 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/FACTOR_VARY.png}
+\includegraphics[width=8cm]{figures/big_font/FACTOR_VARY_BETTER.png}
 \caption{Comparison of a Rateless senders with various overshoot comparison. The blocking Rateless sender is included for reference}
 \label{graph:varyParams}
 \end{figure}
-
-
-
 
 \section{Conclusion}
 \textbf{LETS WRITE A REAL CONCLUSION}
