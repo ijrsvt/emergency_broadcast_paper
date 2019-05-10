@@ -11,9 +11,7 @@ The foundation for this project is Trotsky, a clean-slate internet framework tha
 We leverage Trotsky both as a way of deployment and as a rationale for our design. Deployment in Trotsky is as simple as pushing a software update to TPs. We also use the L3.5 abstraction of domain-to-domain communication to simplify the problem from sending a message to every end-host to sending a message to every ISP. We aim to solve one specific problem: \textit{emergency} broadcast---with Trotsky this is allowed and even encouraged. There is no reason to add complexity to existing architectures or create a new all-encompassing architecture because Trotsky allows for an ecosystem of specialized architectures. 
 
 \subsection{Existing Infrastructure}\label{infrabckgrnd}
-The US public alert system has been around for over half a century\footnote{This paper focuses on the US, but most countries (if they have such systems) have similar designs.}. FEMA initially transmits
-
-At its core, FEMA sends a message to distributors (TV stations, cellular providers, etc.), which in turn deliver the alert to actual citizens. This first step of communication happens either over direct radio transmission or through the internet. In a 2018 test of the system, a majority of radio \& television providers (in addition to all cellular providers) used the online information feed. Primary Entry Points (PEPs) are hardened sites that directly link with FEMA over robust RF communication to help ensure that alerts are propagated across the country. These PEPs can also be used on a local scale, providing a logical central propagation point to reach other broadcasters. \cite{ipaws101} 
+The US public alert system has been around for over half a century\footnote{This paper focuses on the US, but most countries (if they have such systems) have similar designs.}. The system begins with FEMA initiating an alert and sending it to Primary Entry Points (PEPs) across the country via robust RF communication. PEPs are hardened sites that help spread the alert to local radio and TV stations (and can also serve is origin points for local alerts). FEMA (at the same time as the aforementioned broadcast) publishes alerts to an online information feed. All cellular providers and, as seen in a 2018 test of the system, a majority of radio \& television providers use this online feed. Ultimately, the FEMA message first goes to distributors, which then, in turn, deliver the alert to individual citizens. \cite{ipaws101}
 
 The 2018 system test showed some interesting results about the effectiveness of the system. Overall only about 80\% of people received the alert, showing that there is room for improvement. Furthermore, most people that were surveyed received the alert on their smartphone, rather than radio or television (combined less than 10\% of respondents ). The cellular transmission caused a variety of issues, ranging from ensuring service outages, to receipt of dozens of duplicate alerts.\cite{weatest,everbridge}
 
@@ -70,7 +68,7 @@ In the following section, we will focus on goal \textbf{2} and assumption \textb
 \subsection{Threat Model}
 \subsection{Extensions}
 \section{Reliable Transmission}\label{reliable}
-In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes. The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery\cite{raptorq, raptorqpresent}.
+In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes. The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery.\cite{raptorq, raptorqpresent}
 
 RaptorQ encoding also provides high performance through linear time encoding and decoding, reducing the burden on TPs\footnote{Specifically that the encoding/decoding scheme does not rely on specialized hardware}. Codornices, a RaptorQ package from ICSI, recently released performance results. For a 128 kB message on x86, the encode and decode took under $0.5$ ms each, and was able to produce/consume at a rate of $2$ Gbps\cite{raptorqperf}. This performance is definitely sufficient for our application, as will be described in the following section.
 \subsection{Use in our system}
@@ -80,10 +78,12 @@ RaptorQ encoding also provides high performance through linear time encoding and
 
 -   Downside of no-blocking
 
+- Consideration of ACK-based as well
+
 
 \section{Evaluation}
-For our evaluation we used the python networkx library to model the high level behavior of different propagation modes\cite{nwx}. 
-For network topologies, we used an abridged Rocketfuel ISP level map \cite{rocketfuel}.
+For our evaluation we used the python networkx library to model the high level behavior of different propagation modes.\cite{nwx}
+For network topologies, we used an abridged Rocketfuel ISP level map. \cite{rocketfuel}
 
 \begin{figure}[tp]
 \centering
