@@ -2,7 +2,7 @@
 
 More and more people consume media from client-server based sources (e.g., Facebook, Netflix, Spotify, etc.) instead of traditional one-to-many sources (e.g., television, radio, etc.) that usually carry emergency alerts. The current solution to alerting users of client-server systems is to provide an emergency alert feed that websites and providers can periodically poll and then push to users. While television and radio broadcasters (and providers) are legally required to disseminate these messages, websites and ISPs\footnote{Companies that provide both (like AT\&T), only are required to send via the mandated medium} are not.\cite{cfr47}
 
-More importantly, the existing systems treat the internet as a reliable black box, ignoring the increasing frequency and strength of cyber-attacks. In 'traditional' emergency scenarios the internet is either present or not; physical cables are down or up. But in a denial of service attack, the physical infrastructure is intact, and the ability for useful communication is heavily degraded. In a scenario where either terrorist or state actors decide to attack in both the physical \textit{and} cyber realms, citizens still need to be able to receive these critical alerts.
+More importantly, the existing systems treat the internet as a reliable black box, ignoring the increasing frequency and strength of cyber-attacks. In `traditional' emergency scenarios the internet is either present or not; physical cables are down or up. However, in a denial of service attack, the physical infrastructure is intact, but the ability for useful communication is heavily degraded. In a scenario where either terrorist or state actors decide to attack in both the physical \textit{and} cyber realms, citizens still need to be able to receive these critical alerts.
 
 \section{Background}
 \subsection{Trotsky}
@@ -37,19 +37,19 @@ The steps for a national alert solution using our proposed architecture are show
 
 \textbf{5.} The TP initiates L3.5 flooding\footnote{Continual broadcast to all neighbors.} of the packetized message, encoding the data using a fountain code (described in section \ref{reliable}). Every TP that receives a packet from the message \textit{also checks} the signature before forwarding. If the signature does not match, the packet is dropped.
 
-\textbf{6.} Each TP floods until its neighbor responds with 'Message Received.' 
+\textbf{6.} Each TP floods until its neighbor responds with `Message Received.' 
 
 \textbf{7.} When each TP is able to decode the message, the owner of the TP (an ISP) will begin internal, intra-domain broadcast to its customers.
 
 \\
-Once messages get to an ISP, the ISP is responsible for the 'last-mile' delivery to people. This delivery service can differ domain to domain. For a wireless provider, they may use the same SMS-based emergency alert system that is in use today. ISPs can use multicast, existing modem communication systems, or whatever technologies they may have. Finally, the host-based delivery is as simple as having browsers or OS vendors accepting special, verified 'alert' packets. 
+Once messages get to an ISP, the ISP is responsible for the `last-mile' delivery to people. This delivery service can differ domain to domain. For a wireless provider, they may use the same SMS-based emergency alert system that is in use today. ISPs can use multicast, existing modem communication systems, or whatever technologies they may have. Finally, the host-based delivery is as simple as having browsers or OS vendors accepting special, verified `alert' packets. 
 
 A local emergency broadcast would follow a similar procedure, but still differs in two main ways. First, it may not require cross validation with other PEPs. This is because a locality may only have one PEP, and an initiating authority would go directly to that PEP for broadcasting. Second, when the message is flooded on L3.5, TPs in different localities would not continue the broadcast\footnote{If a TP knew its neighbors were in the same location as the broadcast, it would forward the packets.}. 
 
-To draw our discussion of the overall design to a close, we will now discuss how the packet layout enables the functionality of our architecture. The fields in the packet are shown in Figure \ref{fig:pckt}; everything 'inside' of the L3.5 header was created as part of our proposal. The L3.5 header specifies that the TP should pass the packet to the Emergency Broadcast processing agent. The\textit{ Broadcast ID} is a  flow number to differentiate between messages. The \textit{Total Number Sent} specifies how many packets the TP should receive before sending 'Message Received.' This will be larger than the number of needed for decoding the message and will be described in section \ref{reliable}. \textit{Location} specifies what region\footnote{Any standardized location format works (e.g., ZIP code, city, etc.)} the message is for, enabling local broadcast. The \textit{Time Stamp} and \textit{Crypto Signature} are used in verification and in preventing replay-based attacks (messages with a valid signature and a stale time stamp will be dropped).
+To draw our discussion of the overall design to a close, we will now discuss how the packet layout enables the functionality of our architecture. The fields in the packet are shown in Figure \ref{fig:pckt}; everything `inside' of the L3.5 header was created as part of our proposal. The L3.5 header specifies that the TP should pass the packet to the Emergency Broadcast processing agent. The\textit{ Broadcast ID} is a  flow number to differentiate between messages. The \textit{Total Number Sent} specifies how many packets the TP should receive before sending `Message Received.' This will be larger than the number of needed for decoding the message and will be described in section \ref{reliable}. \textit{Location} specifies what region\footnote{Any standardized location format works (e.g., ZIP code, city, etc.)} the message is for, enabling local broadcast. The \textit{Crypto Signature} is integral to the verifying that the packet came from an authorized origin and that it has not been tampered with. The \textit{Time Stamp} states when the message was initially sent. Together these two fields prevent replay-based attacks (messages with a valid signature and a stale time stamp will be dropped).
 \begin{figure}[tp]
 \centering
-\includegraphics[width=8.5cm]{figures/packet_header.png}
+\includegraphics[width=8.5cm]{figures/packet_header_final.png}
 \caption{Packet layout}
 \label{fig:pckt}
 \end{figure}
@@ -59,7 +59,7 @@ The goal for this architecture is two-fold: \textbf{1)} robust message delivery 
 
 Goal \textbf{1} and assumptions \textbf{B} allowed us to consider in-networks solutions. End-to-end arguments over many lossy links\footnote{While the internet is usually \textit{not} lossy, in congestion-attack scenarios that we are concerned with, packet loss is common.} are weak because the per-link drop-probabilities are compounded and result in low chance of delivery. Trotsky allows us to place functionality in the network, reducing the number of links between logical endpoints, increasing robustness. In network support also allows for extensions like increasing QoS levels for these alerts\footnote{To reiterate: this is an extension.}. 
 
-Goal \textbf{1} and assumption \textbf{A} led us to the idea of flooding. This architecture is used for infrequent and \textit{urgent} events, meaning that degradation of other traffic is tolerable. Using BGP (or any 'normal' inter-domain routing) paths increase the probability of message failure if links go down or are unstable; it also introduces unnecessary complexity. The use of many PEPs to introduce the message to the system also reduces the single-point-of-failure of having a truly centralized network entry point.
+Goal \textbf{1} and assumption \textbf{A} led us to the idea of flooding. This architecture is used for infrequent and \textit{urgent} events, meaning that degradation of other traffic is tolerable. Using BGP (or any `normal' inter-domain routing) paths increase the probability of message failure if links go down or are unstable; it also introduces unnecessary complexity. The use of many PEPs to introduce the message to the system also reduces the single-point-of-failure of having a truly centralized network entry point.
 
 In the following section, we will focus on goal \textbf{2} and assumption \textbf{C}. 
 \section{Access Control}\label{acl}
@@ -68,18 +68,14 @@ In the following section, we will focus on goal \textbf{2} and assumption \textb
 \subsection{Threat Model}
 \subsection{Extensions}
 \section{Reliable Transmission}\label{reliable}
-In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes. The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery.\cite{raptorq, raptorqpresent}
+In order to increase the speed and reliability of message transmission, we will use RaptorQ fountain codes (we will use RaptorQ and rateless codes interchangeably throughout this paper). The idea of fountain codes is that a finite source of $k$ symbols can be transformed into an arbitrarily long stream of non-redundant symbols. Furthermore, the receiver only needs to receive \textbf{any} $k + \epsilon$ symbols to recover the original message. For RaptorQ, $\epsilon = 0$ and $\epsilon = 2$ give, respectively, a $99\%$ and $99.9999\%$ chance of recovery.\cite{raptorq, raptorqpresent}
 
 RaptorQ encoding also provides high performance through linear time encoding and decoding, reducing the burden on TPs\footnote{Specifically that the encoding/decoding scheme does not rely on specialized hardware}. Codornices, a RaptorQ package from ICSI, recently released performance results. For a 128 kB message on x86, the encode and decode took under $0.5$ ms each, and was able to produce/consume at a rate of $2$ Gbps\cite{raptorqperf}. This performance is definitely sufficient for our application, as will be described in the following section.
+
 \subsection{Use in our system}
--   Send  $2\cdot k_{overshoot}$
+In our design we encode a message once: when it arrives at the first TP. All subsequent TPs (in other domains) decode the message (for intra-domain broadcast) and resend the \textit{already encoded} message to neighbors. Since we are reducing a potentially infinite stream to a finite length one we ensure that nodes receive \textit{more} packets than are needed to only reconstruct the message. For a message of $k$ blocks, we set the \textit{Total Number Sent} packet field (see Figure \ref{fig:pckt}) to $k\cdot f_{overshoot}$. This overshoot value is not permanently fixed and can be tuned: a large $f_{overshoot}$ uses more bandwidth, but ensures more packets for future nodes to re-transmit, while a small $f_{overshoot}$ (specifically $1$) is just blind sending of a message.
 
--   Encode once (at transmission)
-
--   Downside of no-blocking
-
-- Consideration of ACK-based as well
-
+The choice to not use full RaptorQ decoding and encoding at each step was based on the concern of blocking\footnote{`Blocking' was chosen over `store-and-forward' in order to emphasize that this is on a per \textbf{message} basis}, or waiting for an entire message to arrive before flooding. All the time that one node spends waiting to receive the remainder of a message is time wasted in transmission. We will see this come back up in the following evaluation section.
 
 \section{Evaluation}
 For our evaluation we used the python networkx library to model the high level behavior of different propagation modes.\cite{nwx}
@@ -87,15 +83,16 @@ For network topologies, we used an abridged Rocketfuel ISP level map. \cite{rock
 
 \begin{figure}[tp]
 \centering
-\includegraphics[width=6cm]{figures/simulate_algo.png}
+\includegraphics[width=6cm]{figures/algo_v2.png}
 \caption{Basic simulation algorithm used}
 \label{algo:a1}
 \end{figure}
 
 \subsection{Simulation Design}
-The test framework is described in Figure \ref{algo:a1}. Special care is taken to ensure that if a node gets a chunk on one iteration, it cannot transmit until the next iteration. The simulation continues until every node has received all packets in the message.  
+The simulator provides as step-based simulation of propagation of packets until all nodes have received the full message. The pseudocode is provided in Figure \ref{algo:a1}. 
+Special care is taken to ensure that if a node gets a chunk on one iteration, it cannot transmit until the next iteration. The simulation continues until every node has received all packets in the message.  
 
-To model the RaptorQ encoding technique, each node iterates through all received packets and sends one (not knowing what the reciever has). The first node is given more chunks than the message needs to simulate the infinite generation of blocks. In the case of the blocking version, each node waits until it had received enough chunks (the number of chunks in the message) to decode a message before sending. For the ACK-based sending technique, each node keeps track of the largest 'sequence number' that each neighbor has received. It repeatedly sends one chunk until the neighbor tells it to move to the next block.
+To model the RaptorQ encoding technique, each node iterates through all received packets and sends one (not knowing what the reciever has). The first node is given more chunks than the message needs to simulate the infinite generation of blocks. In the case of the blocking version, each node waits until it had received enough chunks (the number of chunks in the message) to decode a message before sending. For the ACK-based sending technique, each node keeps track of the largest `sequence number' that each neighbor has received. It repeatedly sends one chunk until the neighbor tells it to move to the next block.
 
 \subsection{Experimental Setup}
 For each experiment we defined a link-based drop probability value, selected a given propagation method and ran the simulation. For each set of control variables we repeated the simulation 100 times to get a stronger sample size. For all experiments, we selected one sender node (at random from the graph) and sent a 15-packet-long message.
@@ -107,7 +104,7 @@ We were only concerned with relative performance of methods, not absolute perfor
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/ack_trim.png}
+\includegraphics[width=8cm]{figures/ACK_FINAL.png}
 \caption{Box-and-Whisker plot of the ACKing sender }
 \label{graph:ack}
 \end{figure}
@@ -115,7 +112,7 @@ We were only concerned with relative performance of methods, not absolute perfor
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/rateless_trim.png}
+\includegraphics[width=8cm]{figures/rateless_FINAL.png}
 \caption{Box-and-Whisker plot of the Rateless sender}
 \label{graph:rateless}
 \end{figure}
@@ -136,16 +133,23 @@ Overall the results are not surprising. The rateless sender benefits from being 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/ack_comp.png}
+\includegraphics[width=8cm]{figures/ACK_RATELESS_FINAL.png}
 \caption{Comparison of the ACKing and Rateless senders}
 \label{graph:ackvsrateless}
 \end{figure}
 
+\begin{figure}[tp]
+\centering
+\noindent
+\includegraphics[width=8cm]{figures/TRIPLE_FINAL.png}
+\caption{Comparison of the ACKing and two Rateless senders on a log y-axis}
+\label{graph:ackvsratelessLOG}
+\end{figure}
 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/block_comp.png}
+\includegraphics[width=8cm]{figures/BLOCKING_RATELESS.png}
 \caption{Comparison of the blocking and non-blocking Rateless senders}
 \label{graph:blockingvsnot}
 \end{figure}
@@ -153,10 +157,13 @@ Overall the results are not surprising. The rateless sender benefits from being 
 \begin{figure}[tp]
 \centering
 \noindent
-\includegraphics[width=8cm]{figures/big_font/triple_comp.png}
-\caption{Comparison of the ACKing and two Rateless senders on a log y-axis}
-\label{graph:ackvsratelessLOG}
+\includegraphics[width=8cm]{figures/FACTOR_VARY.png}
+\caption{Comparison of a Rateless senders with various overshoot comparison. The blocking Rateless sender is included for reference}
+\label{graph:varyParams}
 \end{figure}
+
+
+
 
 \section{Conclusion}
 \textbf{LETS WRITE A REAL CONCLUSION}
